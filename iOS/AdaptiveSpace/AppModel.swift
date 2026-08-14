@@ -27,6 +27,7 @@ final class AppModel {
     var editedBrightness = 35.0
     var homeRoom = RoomState.homeDefault
     var hotelRoom = RoomState.hotelDefault
+    var hasSavedAdjustment = false
     var space: SpaceSpec?
     var session: SpaceSession?
     var statusMessage = "더미 데이터만 사용합니다."
@@ -93,6 +94,7 @@ final class AppModel {
             sound: recommendation.profile.soundPreset,
             isApplied: true
         )
+        hasSavedAdjustment = false
         statusMessage = "집 환경 적용 완료 · 조명/온도/사운드 성공"
     }
 
@@ -112,7 +114,11 @@ final class AppModel {
         brightnessDelta = Int(editedBrightness.rounded()) - base
         UserDefaults.standard.set(brightnessDelta, forKey: "recoveryBrightnessDelta")
         await requestRecommendation()
+        if homeRoom.isApplied, let updatedRecommendation = self.recommendation {
+            homeRoom.brightness = updatedRecommendation.profile.lighting.brightnessPercent
+        }
         step = .home
+        hasSavedAdjustment = true
         statusMessage = "사용자 보정 저장 · 같은 조건의 다음 추천에 반영"
     }
 
@@ -151,6 +157,7 @@ final class AppModel {
         session = nil
         homeRoom = .homeDefault
         hotelRoom = .hotelDefault
+        hasSavedAdjustment = false
         statusMessage = "더미 데이터만 사용합니다."
         errorMessage = nil
     }

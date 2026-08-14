@@ -1,35 +1,33 @@
 import SwiftUI
 
 enum AdaptiveDesign {
-    static let accent = Color(red: 0.38, green: 0.31, blue: 0.98)
-    static let aqua = Color(red: 0.20, green: 0.82, blue: 0.72)
-    static let warm = Color(red: 1.00, green: 0.69, blue: 0.35)
-    static let radius: CGFloat = 28
+    static let canvas = Color(red: 0.025, green: 0.03, blue: 0.045)
+    static let ink = Color(red: 0.055, green: 0.07, blue: 0.08)
+    static let accent = Color(red: 0.73, green: 1.0, blue: 0.72)
+    static let cobalt = Color(red: 0.35, green: 0.46, blue: 1.0)
+    static let warm = Color(red: 1.0, green: 0.67, blue: 0.38)
+    static let radius: CGFloat = 30
 }
 
 struct AmbientBackdrop: View {
     var body: some View {
         ZStack {
-            Color(.systemBackground)
+            AdaptiveDesign.canvas
             LinearGradient(
-                colors: [
-                    AdaptiveDesign.accent.opacity(0.18),
-                    AdaptiveDesign.aqua.opacity(0.11),
-                    Color(.systemBackground).opacity(0.92)
-                ],
-                startPoint: .topLeading,
+                colors: [Color.white.opacity(0.035), .clear, AdaptiveDesign.cobalt.opacity(0.08)],
+                startPoint: .top,
                 endPoint: .bottomTrailing
             )
             Circle()
-                .fill(AdaptiveDesign.accent.opacity(0.18))
-                .frame(width: 280, height: 280)
-                .blur(radius: 72)
-                .offset(x: -150, y: -300)
+                .fill(AdaptiveDesign.cobalt.opacity(0.32))
+                .frame(width: 300, height: 300)
+                .blur(radius: 110)
+                .offset(x: 170, y: -340)
             Circle()
-                .fill(AdaptiveDesign.aqua.opacity(0.16))
-                .frame(width: 260, height: 260)
-                .blur(radius: 76)
-                .offset(x: 170, y: 240)
+                .fill(AdaptiveDesign.accent.opacity(0.13))
+                .frame(width: 280, height: 280)
+                .blur(radius: 120)
+                .offset(x: -190, y: 360)
         }
         .ignoresSafeArea()
     }
@@ -37,17 +35,19 @@ struct AmbientBackdrop: View {
 
 struct GlassSurface<Content: View>: View {
     let tint: Color?
-    @ViewBuilder let content: Content
+    let padding: CGFloat
+    let content: Content
 
-    init(tint: Color? = nil, @ViewBuilder content: () -> Content) {
+    init(tint: Color? = nil, padding: CGFloat = 20, @ViewBuilder content: () -> Content) {
         self.tint = tint
+        self.padding = padding
         self.content = content()
     }
 
     var body: some View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(20)
+            .padding(padding)
             .modifier(AdaptiveGlassSurfaceModifier(tint: tint))
     }
 }
@@ -68,7 +68,7 @@ private struct AdaptiveGlassSurfaceModifier: ViewModifier {
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: AdaptiveDesign.radius))
                 .overlay {
                     RoundedRectangle(cornerRadius: AdaptiveDesign.radius)
-                        .stroke(.white.opacity(0.28), lineWidth: 1)
+                        .stroke(.white.opacity(0.12), lineWidth: 1)
                 }
         }
     }
@@ -79,17 +79,18 @@ struct GlassMetricTile: View {
     let value: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(value)
-                .font(.headline)
+                .font(.title3.weight(.semibold))
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.72)
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.48))
         }
-        .frame(maxWidth: .infinity, minHeight: 58)
+        .frame(maxWidth: .infinity, minHeight: 62, alignment: .leading)
+        .padding(.horizontal, 16)
         .modifier(AdaptiveMetricGlassModifier())
     }
 }
@@ -98,16 +99,16 @@ private struct AdaptiveMetricGlassModifier: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(.regular, in: .rect(cornerRadius: 16))
+            content.glassEffect(.clear, in: .rect(cornerRadius: 20))
         } else {
-            content.background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            content.background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
         }
     }
 }
 
 struct GlassTag: View {
     let text: String
-    var tint = AdaptiveDesign.accent.opacity(0.16)
+    var tint = Color.white.opacity(0.08)
 
     var body: some View {
         Text(text)
@@ -141,18 +142,18 @@ struct GlassPrimaryButton: View {
         let button = Button(action: action) {
             HStack(spacing: 12) {
                 if isLoading {
-                    ProgressView()
+                    ProgressView().tint(AdaptiveDesign.ink)
                 } else {
                     Image(systemName: icon)
                 }
                 Text(title)
                 Spacer()
-                Image(systemName: "arrow.right")
+                Image(systemName: "arrow.up.right")
                     .font(.caption.weight(.bold))
             }
             .font(.headline)
+            .foregroundStyle(AdaptiveDesign.ink)
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, 4)
         }
         .controlSize(.large)
         .disabled(isLoading)
@@ -164,7 +165,7 @@ struct GlassPrimaryButton: View {
         } else {
             button
                 .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.roundedRectangle(radius: 18))
+                .buttonBorderShape(.roundedRectangle(radius: 22))
                 .tint(AdaptiveDesign.accent)
         }
     }
@@ -184,6 +185,7 @@ struct GlassSecondaryButton: View {
             }
         }
         .controlSize(.regular)
+        .tint(.white)
 
         if #available(iOS 26.0, *) {
             button.buttonStyle(.glass)
@@ -192,4 +194,3 @@ struct GlassSecondaryButton: View {
         }
     }
 }
-
