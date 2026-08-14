@@ -1,0 +1,47 @@
+name: AdaptiveSpace
+options:
+  bundleIdPrefix: io.adaptive
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+targets:
+  AdaptiveSpace:
+    type: application
+    platform: iOS
+    sources:
+      - iOS/AdaptiveSpace
+    info:
+      path: iOS/AdaptiveSpace/Info.plist
+      properties:
+        CFBundleDisplayName: Adaptive Space
+        UILaunchScreen: {}
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.adaptive.space
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+    scheme:
+      testTargets:
+        - AdaptiveSpaceTests
+        - AdaptiveSpaceUITests
+  AdaptiveSpaceTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - iOS/AdaptiveSpaceTests
+    dependencies:
+      - target: AdaptiveSpace
+  AdaptiveSpaceUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - iOS/AdaptiveSpaceUITests
+    dependencies:
+      - target: AdaptiveSpace
+    settings:
+      base:
+        TEST_TARGET_NAME: AdaptiveSpace
