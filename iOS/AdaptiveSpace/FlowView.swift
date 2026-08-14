@@ -59,8 +59,7 @@ struct FlowView: View {
 
     private var wearableStep: some View {
         VStack(alignment: .leading, spacing: 24) {
-            hero("오늘 필요한 공간은?", detail: "상태를 고르면 공간을 준비해요.")
-
+            sectionLabel("모드")
             scenarioPicker
 
             GlassSurface {
@@ -93,7 +92,7 @@ struct FlowView: View {
                 }
                 .accessibilityIdentifier("connectWearable")
             } else {
-                actionButton("내 공간 만들기", icon: "sparkles") {
+                actionButton("추천 생성", icon: "sparkles") {
                     await model.requestRecommendation()
                 }
                 .accessibilityIdentifier("requestRecommendation")
@@ -127,19 +126,19 @@ struct FlowView: View {
     private var profileStep: some View {
         VStack(alignment: .leading, spacing: 24) {
             if let recommendation = model.recommendation {
-                VStack(alignment: .leading, spacing: 20) {
-                    Image(systemName: recommendation.context.symbol)
-                        .font(.system(size: 46, weight: .medium))
+                HStack {
+                    Label(shortScenario(recommendation.context), systemImage: recommendation.context.symbol)
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(AdaptiveDesign.accent)
-                        .symbolEffect(.pulse)
-                    hero("\(shortScenario(recommendation.context))을 위한 공간", detail: recommendation.reason)
+                    Spacer()
+                    GlassTag(text: "추천 설정")
                 }
 
                 GlassSurface(tint: AdaptiveDesign.cobalt.opacity(0.1)) {
                     profileValues(recommendation.profile)
                 }
 
-                actionButton("이 설정 사용하기", icon: "checkmark") {
+                actionButton("확인", icon: "checkmark") {
                     model.approveProfile()
                 }
                 .accessibilityIdentifier("approveProfile")
@@ -149,11 +148,11 @@ struct FlowView: View {
 
     private var homeStep: some View {
         VStack(alignment: .leading, spacing: 24) {
-            hero("집이 준비됐어요", detail: model.homeRoom.isApplied ? "지금 이 설정으로 편안하게 쉬세요." : "확인 후 내 공간에 적용하세요.")
+            sectionLabel("집")
             roomPreview(title: "Home", room: model.homeRoom)
 
             if !model.homeRoom.isApplied {
-                actionButton("집에 적용", icon: "play.fill") {
+                actionButton("적용", icon: "play.fill") {
                     model.applyHome()
                 }
                 .accessibilityIdentifier("applyHome")
@@ -168,12 +167,12 @@ struct FlowView: View {
                 }
 
                 if model.scenario != .recovery || model.hasSavedAdjustment {
-                    actionButton("호텔에서 이어가기", icon: "qrcode.viewfinder") {
+                    actionButton("호텔 체크인", icon: "qrcode.viewfinder") {
                         await model.checkIn()
                     }
                     .accessibilityIdentifier("checkInHotel")
                 } else {
-                    actionButton("이 밝기 기억하기", icon: "heart.fill") {
+                    actionButton("저장", icon: "checkmark") {
                         await model.saveAdjustment()
                     }
                     .accessibilityIdentifier("saveAdjustment")
@@ -214,16 +213,13 @@ struct FlowView: View {
 
     private var hotelStep: some View {
         VStack(alignment: .leading, spacing: 24) {
-            hero(model.hotelRoom.isApplied ? "호텔도 준비됐어요" : "호텔에서도 그대로", detail: "내 설정만 안전하게 옮겨요.")
+            sectionLabel("호텔")
 
             GlassSurface(tint: AdaptiveDesign.accent.opacity(0.07)) {
                 VStack(alignment: .leading, spacing: 20) {
-                    Label("건강 데이터 공유 안 함", systemImage: "lock.shield.fill")
+                    Label("공유된 생체정보: \(model.session?.sharedBiometricCount ?? 0)건", systemImage: "lock.shield.fill")
                         .font(.headline)
                         .foregroundStyle(AdaptiveDesign.accent)
-                    Text("공유된 생체정보: \(model.session?.sharedBiometricCount ?? 0)건")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.48))
 
                     if let execution = model.session?.execution {
                         HStack(spacing: 12) {
@@ -232,9 +228,12 @@ struct FlowView: View {
                         }
                     }
 
-                    Text("조명 색감과 사운드는 호텔 기본값을 유지해요.")
-                        .font(.subheadline)
-                        .foregroundStyle(.white.opacity(0.58))
+                    glassGroup(spacing: 8) {
+                        HStack(spacing: 8) {
+                            GlassTag(text: "색온도 미지원")
+                            GlassTag(text: "사운드 미지원")
+                        }
+                    }
                 }
             }
 
@@ -247,7 +246,7 @@ struct FlowView: View {
                 }
                 .accessibilityIdentifier("checkout")
             } else {
-                actionButton("호텔에 적용", icon: "checkmark") {
+                actionButton("적용", icon: "checkmark") {
                     await model.applyHotel()
                 }
                 .accessibilityIdentifier("applyHotel")
@@ -268,7 +267,8 @@ struct FlowView: View {
                     .foregroundStyle(AdaptiveDesign.accent)
                     .symbolEffect(.bounce, value: model.step)
             }
-            hero("모든 것이 원래대로", detail: "공간은 복원되고, 일회성 연결은 끝났어요.")
+            Text("완료")
+                .font(.system(size: 34, weight: .semibold, design: .rounded))
 
             glassGroup(spacing: 8) {
                 HStack(spacing: 8) {
@@ -284,17 +284,9 @@ struct FlowView: View {
         }
     }
 
-    private func hero(_ title: String, detail: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                .tracking(-1)
-            Text(detail)
-                .font(.body)
-                .foregroundStyle(.white.opacity(0.54))
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title)
+            .font(.title2.weight(.semibold))
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
