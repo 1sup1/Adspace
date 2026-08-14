@@ -82,6 +82,14 @@ struct FlowView: View {
                     if let snapshot = model.snapshot {
                         Divider().overlay(.white.opacity(0.12))
                         metricGrid(snapshot)
+                        HStack(spacing: 7) {
+                            Circle()
+                                .fill(AdaptiveDesign.accent)
+                                .frame(width: 7, height: 7)
+                            Text("\(model.isStreaming ? "LIVE" : "SYNCED") · \(model.lastSignalSequence)")
+                                .font(.caption.monospaced().weight(.semibold))
+                                .foregroundStyle(AdaptiveDesign.accent)
+                        }
                     }
                 }
             }
@@ -136,6 +144,27 @@ struct FlowView: View {
 
                 GlassSurface(tint: AdaptiveDesign.cobalt.opacity(0.1)) {
                     profileValues(recommendation.profile)
+                }
+
+                GlassSurface(padding: 16) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Label(
+                                recommendation.generatedBy == "agents_sdk" ? "AGENT" : "RULES",
+                                systemImage: "waveform.path.ecg"
+                            )
+                            .font(.caption.monospaced().weight(.bold))
+                            .foregroundStyle(AdaptiveDesign.accent)
+                            Spacer()
+                            Text("\(recommendation.observedSampleCount) SIGNALS")
+                                .font(.caption2.monospaced())
+                                .foregroundStyle(.white.opacity(0.48))
+                        }
+                        Text(recommendation.reason)
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.76))
+                            .lineLimit(2)
+                    }
                 }
 
                 actionButton("확인", icon: "checkmark") {

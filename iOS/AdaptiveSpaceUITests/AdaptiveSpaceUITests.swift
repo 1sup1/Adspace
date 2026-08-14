@@ -10,9 +10,12 @@ final class AdaptiveSpaceUITests: XCTestCase {
 
         tap("connectWearable", in: app)
         waitUntilEnabled("requestRecommendation", in: app, timeout: 8)
+        XCTAssertTrue(app.staticTexts["LIVE · 4"].exists)
         capture("02-wearable-synced")
         tap("requestRecommendation", in: app)
         waitUntilEnabled("approveProfile", in: app, timeout: 15)
+        XCTAssertTrue(app.staticTexts["AGENT"].exists)
+        XCTAssertTrue(app.staticTexts["4 SIGNALS"].exists)
         capture("03-agent-briefing")
         tap("approveProfile", in: app)
         tap("applyHome", in: app)

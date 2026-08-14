@@ -2,6 +2,21 @@ import XCTest
 @testable import AdaptiveSpace
 
 final class AdaptiveSpaceTests: XCTestCase {
+    func testDemoWearableEmitsOrderedSignals() async throws {
+        let provider = DemoWearableProvider(connectionDelay: .zero, sampleInterval: .zero)
+        var signals: [WearableSignal] = []
+
+        for try await signal in provider.signalStream(for: .recovery) {
+            signals.append(signal)
+        }
+
+        XCTAssertEqual(signals.map(\.sequence), [1, 2, 3, 4])
+        XCTAssertEqual(signals.map(\.snapshot.id), [
+            "demo-recovery-1", "demo-recovery-2", "demo-recovery-3", "demo-recovery-4"
+        ])
+        XCTAssertEqual(signals.last?.snapshot.heartRateBPM, 78)
+    }
+
     func testConsentRemovesUnapprovedMetric() {
         let snapshot = WearableSnapshot(
             id: "demo",

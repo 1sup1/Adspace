@@ -22,7 +22,10 @@ final class AppModel {
     var scenario = DemoScenario.recovery
     var consent = Set(ConsentedMetric.allCases)
     var isWearableConnected = false
+    var isStreaming = false
+    var lastSignalSequence = 0
     var snapshot: WearableSnapshot?
+    var recentSnapshots: [WearableSnapshot] = []
     var recommendation: RecommendationResponse?
     var editedBrightness = 35.0
     var homeRoom = RoomState.homeDefault
@@ -53,8 +56,20 @@ final class AppModel {
         await perform {
             try await wearable.connect()
             isWearableConnected = true
-            let raw = try await wearable.snapshot(for: scenario)
-            snapshot = raw.filtered(by: consent)
+            recentSnapshots = []
+            snapshot = nil
+            lastSignalSequence = 0
+            isStreaming = true
+            defer { isStreaming = false }
+
+            for try await signal in wearable.signalStream(for: scenario) {
+                try Task.checkCancellation()
+                let filtered = signal.snapshot.filtered(by: consent)
+                recentSnapshots.append(filtered)
+                snapshot = filtered
+                lastSignalSequence = signal.sequence
+                statusMessage = "Demo data 수신 중 · \(signal.sequence)"
+            }
             statusMessage = "Demo data 동기화 완료 · 동의 \(consent.count)개"
         }
     }
@@ -65,6 +80,7 @@ final class AppModel {
             let response = try await client.recommendation(
                 RecommendationRequest(
                     snapshot: snapshot,
+                    recentSnapshots: recentSnapshots,
                     consentedFields: consent.sorted { $0.rawValue < $1.rawValue },
                     adjustment: Adjustment(
                         brightnessDelta: scenario == .recovery ? brightnessDelta : 0,
@@ -151,7 +167,10 @@ final class AppModel {
     func resetDemo() {
         step = .wearable
         isWearableConnected = false
+        isStreaming = false
+        lastSignalSequence = 0
         snapshot = nil
+        recentSnapshots = []
         recommendation = nil
         space = nil
         session = nil
@@ -187,6 +206,12 @@ final class AppModel {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        do { try await operation() } catch { errorMessage = error.localizedDescription }
+        do {
+            try await operation()
+        } catch is CancellationError {
+            return
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

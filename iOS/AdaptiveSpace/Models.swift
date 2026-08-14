@@ -90,11 +90,13 @@ struct Adjustment: Codable, Sendable {
 
 struct RecommendationRequest: Codable, Sendable {
     let snapshot: WearableSnapshot
+    let recentSnapshots: [WearableSnapshot]
     let consentedFields: [ConsentedMetric]
     let adjustment: Adjustment
 
     enum CodingKeys: String, CodingKey {
         case snapshot, adjustment
+        case recentSnapshots = "recent_snapshots"
         case consentedFields = "consented_fields"
     }
 }
@@ -130,6 +132,8 @@ struct RecommendationResponse: Codable, Sendable {
     let requiresConfirmation: Bool
     let inputSource: String
     let generatedBy: String
+    let observedSampleCount: Int
+    let evidence: [String]
 
     enum CodingKeys: String, CodingKey {
         case context, confidence, profile, reason
@@ -137,6 +141,8 @@ struct RecommendationResponse: Codable, Sendable {
         case requiresConfirmation = "requires_confirmation"
         case inputSource = "input_source"
         case generatedBy = "generated_by"
+        case observedSampleCount = "observed_sample_count"
+        case evidence
     }
 }
 
