@@ -21,6 +21,10 @@ Android XR을 제외한 최소 수직 슬라이스입니다.
 
 에이전트는 동의된 더미 요약값을 바탕으로 추천 이유만 작성합니다. 컨디션 분류, 조명·온도·사운드 실행값, 공간 범위 제한, 승인, 복원과 만료는 서버의 결정론적 정책이 담당합니다.
 
+UI는 iOS 26 이상에서 SwiftUI 네이티브 Liquid Glass(`glassEffect`, `GlassEffectContainer`, glass 버튼 스타일)를 사용합니다. iOS 17~25에서는 동일한 정보 구조와 동작을 유지하는 system material 폴백을 사용합니다.
+
+UI 작업에 사용한 `swiftui-liquid-glass`, `mobile-app-ui-design` 스킬은 `.agents/skills`에 프로젝트 전용으로 설치되어 있으며 `skills-lock.json`으로 버전을 추적합니다.
+
 ## 실행
 
 최초 한 번:

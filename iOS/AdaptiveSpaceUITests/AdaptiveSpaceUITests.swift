@@ -4,6 +4,7 @@ import XCTest
 final class AdaptiveSpaceUITests: XCTestCase {
     func testCompleteDemoFlow() throws {
         let app = XCUIApplication()
+        app.launchArguments += ["-recoveryBrightnessDelta", "0"]
         app.launch()
         capture("01-wearable-consent")
 
@@ -17,9 +18,10 @@ final class AdaptiveSpaceUITests: XCTestCase {
         tap("applyHome", in: app)
         capture("04-home-applied")
 
-        let slider = app.sliders["brightnessSlider"]
-        reveal(slider, in: app)
-        slider.adjust(toNormalizedSliderPosition: 0.36)
+        for _ in 0..<7 {
+            tap("brightnessIncrease", in: app)
+        }
+        XCTAssertTrue(app.staticTexts["42%"].waitForExistence(timeout: 5))
         tap("saveAdjustment", in: app)
         waitUntilEnabled("checkInHotel", in: app, timeout: 15)
         capture("05-home-adjusted")

@@ -36,8 +36,8 @@ run = "xcodebuild -project AdaptiveSpace.xcodeproj -scheme AdaptiveSpace -sdk ip
 
 [tasks."ios:test"]
 description = "Run iOS unit tests"
-run = "xcodebuild -project AdaptiveSpace.xcodeproj -scheme AdaptiveSpace -destination 'platform=iOS Simulator,name=$ADSPACE_SIMULATOR' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO -only-testing:AdaptiveSpaceTests test -quiet"
+run = "xcodebuild -project AdaptiveSpace.xcodeproj -scheme AdaptiveSpace -destination \"platform=iOS Simulator,name=$ADSPACE_SIMULATOR\" -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO -only-testing:AdaptiveSpaceTests test -quiet"
 
 [tasks."ios:test-ui"]
 description = "Run the full Simulator flow; requires mise run server in another terminal"
-run = "xcodebuild -project AdaptiveSpace.xcodeproj -scheme AdaptiveSpace -destination 'platform=iOS Simulator,name=$ADSPACE_SIMULATOR' -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO -only-testing:AdaptiveSpaceUITests test -quiet"
+run = "xcodebuild -project AdaptiveSpace.xcodeproj -scheme AdaptiveSpace -destination \"platform=iOS Simulator,name=$ADSPACE_SIMULATOR\" -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO -parallel-testing-enabled NO -only-testing:AdaptiveSpaceUITests test -quiet"
