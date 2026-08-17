@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 .mise.local.toml
+.codex/
 
 node_modules/
 dist/
@@ -20,3 +21,9 @@ xcuserdata/
 
 artifacts/
 .worktrees/
+
+Vendor/Needle/Needle.xcframework/
+Vendor/Needle/.artifact-revision
+
+# Local, user-approved dynamic device/tool state.
+server/data/tool_registry.json

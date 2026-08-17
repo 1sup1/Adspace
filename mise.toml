@@ -12,11 +12,19 @@ ADSPACE_SIMULATOR = "iPhone 17 Pro"
 
 [tasks.setup]
 description = "Install system packages and project runtimes"
-run = "brew bundle && mise install && uv sync --directory server && xcodegen generate"
+run = "brew bundle && mise install && uv sync --directory server && ./scripts/fetch_needle_ios.sh && xcodegen generate"
 
 [tasks.check]
 description = "Verify the development environment"
-run = "node --version && npm --version && python --version && uv --version && xcodegen --version && xcodebuild -version"
+run = "node --version && npm --version && python --version && uv --version && xcodegen --version && xcodebuild -version && ./scripts/fetch_needle_ios.sh --verify"
+
+[tasks."needle:ios:fetch"]
+description = "Fetch and verify the pinned Needle 2 iOS runtime"
+run = "./scripts/fetch_needle_ios.sh"
+
+[tasks."needle:ios:verify"]
+description = "Verify the installed Needle 2 iOS runtime"
+run = "./scripts/fetch_needle_ios.sh --verify"
 
 [tasks.server]
 description = "Run the local Agents SDK server"
@@ -26,9 +34,13 @@ run = "uv run --directory server python main.py"
 description = "Run deterministic server policy tests"
 run = "uv run --directory server python -m unittest -v"
 
+[tasks."server:eval"]
+description = "Run deterministic Korean command-routing evaluations"
+run = "uv run --directory server python evals/run_local.py"
+
 [tasks."ios:generate"]
 description = "Generate the Xcode project"
-run = "xcodegen generate"
+run = "./scripts/fetch_needle_ios.sh && xcodegen generate"
 
 [tasks."ios:build"]
 description = "Build the iOS app for Simulator"

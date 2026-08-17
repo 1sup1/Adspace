@@ -12,11 +12,16 @@ targets:
     platform: iOS
     sources:
       - iOS/AdaptiveSpace
+    dependencies:
+      - framework: Vendor/Needle/Needle.xcframework
+        embed: false
     info:
       path: iOS/AdaptiveSpace/Info.plist
       properties:
         CFBundleDisplayName: Adaptive Space
         UILaunchScreen: {}
+        NSMicrophoneUsageDescription: 기기 내 음성 인식으로 에이전트와 대화할 때 마이크를 사용합니다.
+        NSSpeechRecognitionUsageDescription: 음성을 기기에서 텍스트로 변환하며, 변환된 텍스트는 Agent 응답을 위해 서버로 전송될 수 있습니다.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:
@@ -24,6 +29,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: io.adaptive.space
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+        OTHER_LDFLAGS: "$(inherited) -lc++"
+        "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64
     scheme:
       testTargets:
         - AdaptiveSpaceTests

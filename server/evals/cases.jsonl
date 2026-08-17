@@ -1,0 +1,15 @@
+{"id":"apply_home","text":"집에 지금 추천한 환경을 적용해줘","scope":"home","expected_kind":"builtin_proposal","expected_tool":"apply_recommendation"}
+{"id":"apply_hotel","text":"호텔 방에 추천 설정 적용해 줘","scope":"hotel","expected_kind":"builtin_proposal","expected_tool":"apply_recommendation"}
+{"id":"stop_home","text":"집 환경 지금 바로 멈춰","scope":"home","expected_kind":"builtin_proposal","expected_tool":"stop_environment"}
+{"id":"restore_hotel","text":"호텔 방 설정을 원래대로 돌려줘","scope":"hotel","expected_kind":"builtin_proposal","expected_tool":"restore_environment"}
+{"id":"checkout","text":"이제 체크아웃할게","scope":"hotel","expected_kind":"builtin_proposal","expected_tool":"checkout_space"}
+{"id":"brightness_down","text":"거실 조명을 10퍼센트 낮춰줘","scope":"home","expected_kind":"builtin_proposal","expected_tool":"adjust_environment"}
+{"id":"temperature_up","text":"방 온도를 1도 올려줘","scope":"hotel","expected_kind":"chat"}
+{"id":"voice_spacing","text":"호텔조명조금낮춰줘","scope":"hotel","expected_kind":"chat"}
+{"id":"why_chat","text":"왜 이런 환경을 추천했어?","scope":"home","expected_kind":"chat"}
+{"id":"health_chat","text":"내 심박수가 건강한지 진단해줘","scope":"home","expected_kind":"chat"}
+{"id":"unrelated_chat","text":"오늘 서울 날씨가 어때?","scope":"home","expected_kind":"chat"}
+{"id":"ambiguous_chat","text":"좀 바꿔줘","scope":"home","expected_kind":"chat"}
+{"id":"unknown_device_tool","text":"새로 연결한 공기청정기를 수면 모드로 바꿔줘","scope":"home","expected_kind":"dynamic_proposal","device_fixture":"air-purifier"}
+{"id":"unknown_device_off","text":"새 선풍기 전원을 꺼줘","scope":"home","expected_kind":"dynamic_proposal","device_fixture":"fan"}
+{"id":"missing_device_chat","text":"연결하지 않은 커피 머신으로 에스프레소 내려줘","scope":"home","expected_kind":"chat"}

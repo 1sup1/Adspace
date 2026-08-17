@@ -1,220 +1,345 @@
 import SwiftUI
 
 struct FlowView: View {
+    private enum Hub: String, CaseIterable {
+        case live, spaces, agent
+
+        var title: String {
+            switch self {
+            case .live: "Live"
+            case .spaces: "Spaces"
+            case .agent: "Agent"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .live: "waveform.path.ecg"
+            case .spaces: "square.grid.2x2.fill"
+            case .agent: "sparkles"
+            }
+        }
+    }
+
+    private enum Space: String, CaseIterable {
+        case home, hotel
+
+        var title: String { self == .home ? "Home" : "Hotel" }
+        var symbol: String { self == .home ? "house.fill" : "building.2.fill" }
+    }
+
     @Bindable var model: AppModel
+    @State private var selectedHub = Hub.live
+    @State private var selectedSpace = Space.home
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AmbientBackdrop()
-                ScrollView {
-                    VStack(spacing: 24) {
-                        header
-                        if let error = model.errorMessage { errorBanner(error) }
-                        Group {
-                            switch model.step {
-                            case .wearable: wearableStep
-                            case .profile: profileStep
-                            case .home: homeStep
-                            case .hotel: hotelStep
-                            case .complete: completeStep
-                            }
-                        }
-                        .id(model.step)
-                        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+        ZStack {
+            AmbientBackdrop()
+            Group {
+                switch selectedHub {
+                case .live: liveHub
+                case .spaces: spacesHub
+                case .agent:
+                    AgentChatView(
+                        model: model,
+                        scope: selectedSpace.rawValue,
+                        showsCloseButton: false
+                    )
+                }
+            }
+            .transition(.opacity.combined(with: .scale(scale: 0.985)))
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) { hubDock }
+        .animation(.smooth(duration: 0.35), value: selectedHub)
+        .tint(AdaptiveDesign.accent)
+        .preferredColorScheme(.dark)
+    }
+
+    private var liveHub: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                hubHeader(title: "ADAPTIVE", symbol: "wave.3.right", badge: liveBadge)
+                if let error = model.errorMessage { errorBanner(error) }
+                liveSignalCard
+                consentStrip
+
+                if model.snapshot == nil {
+                    actionButton("웨어러블 연결", icon: "applewatch") {
+                        await model.connectAndSync()
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 40)
+                    .accessibilityIdentifier("connectWearable")
+                } else {
+                    actionButton(model.recommendation == nil ? "환경 판단" : "다시 판단", icon: "sparkles") {
+                        await model.requestRecommendation()
+                    }
+                    .accessibilityIdentifier("requestRecommendation")
                 }
-                .scrollIndicators(.hidden)
-            }
-            .animation(.smooth(duration: 0.45), value: model.step)
-            .tint(AdaptiveDesign.accent)
-            .toolbar(.hidden, for: .navigationBar)
-            .preferredColorScheme(.dark)
-        }
-    }
 
-    private var header: some View {
-        HStack(spacing: 16) {
-            Image(systemName: "wave.3.right")
-                .font(.headline.weight(.bold))
-                .foregroundStyle(AdaptiveDesign.accent)
-            Text("ADAPTIVE")
-                .font(.caption.weight(.bold))
-                .tracking(2.4)
-            Spacer()
-            HStack(spacing: 5) {
-                ForEach(AppModel.Step.allCases, id: \.rawValue) { step in
-                    Capsule()
-                        .fill(step.rawValue <= model.step.rawValue ? AdaptiveDesign.accent : .white.opacity(0.14))
-                        .frame(width: step == model.step ? 24 : 7, height: 7)
-                }
-            }
-            .animation(.snappy, value: model.step)
-        }
-        .frame(height: 44)
-    }
-
-    private var wearableStep: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            sectionLabel("모드")
-            scenarioPicker
-
-            GlassSurface {
-                VStack(alignment: .leading, spacing: 20) {
+                if let recommendation = model.recommendation {
                     HStack {
-                        Label("데모 데이터", systemImage: "lock.fill")
-                            .font(.headline)
+                        Text("DECISION")
+                            .font(.caption.weight(.bold))
+                            .tracking(2)
+                            .foregroundStyle(.white.opacity(0.48))
                         Spacer()
-                        Text("\(model.consent.count)/4")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(.white.opacity(0.5))
+                        GlassTag(text: "\(recommendation.observedSampleCount) SIGNALS")
                     }
-
-                    LazyVGrid(columns: twoColumns, spacing: 12) {
-                        ForEach(ConsentedMetric.allCases) { metric in
-                            consentButton(metric)
-                        }
+                    DecisionComparisonView(
+                        comparison: recommendation.comparison,
+                        profile: recommendation.profile
+                    )
+                    actionButton("공간에 적용", icon: "arrow.right") {
+                        model.approveProfile()
+                        selectedSpace = .home
+                        selectedHub = .spaces
                     }
-
-                    if let snapshot = model.snapshot {
-                        Divider().overlay(.white.opacity(0.12))
-                        metricGrid(snapshot)
-                        HStack(spacing: 7) {
-                            Circle()
-                                .fill(AdaptiveDesign.accent)
-                                .frame(width: 7, height: 7)
-                            Text("\(model.isStreaming ? "LIVE" : "SYNCED") · \(model.lastSignalSequence)")
-                                .font(.caption.monospaced().weight(.semibold))
-                                .foregroundStyle(AdaptiveDesign.accent)
-                        }
-                    }
+                    .accessibilityIdentifier("approveProfile")
                 }
             }
-
-            if model.snapshot == nil {
-                actionButton("웨어러블 연결", icon: "applewatch") {
-                    await model.connectAndSync()
-                }
-                .accessibilityIdentifier("connectWearable")
-            } else {
-                actionButton("추천 생성", icon: "sparkles") {
-                    await model.requestRecommendation()
-                }
-                .accessibilityIdentifier("requestRecommendation")
-            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 32)
         }
+        .scrollIndicators(.hidden)
     }
 
-    private var scenarioPicker: some View {
-        glassGroup(spacing: 8) {
-            HStack(spacing: 8) {
-                ForEach(DemoScenario.allCases) { scenario in
-                    Button {
-                        model.scenario = scenario
-                    } label: {
-                        VStack(spacing: 10) {
-                            Image(systemName: scenario.symbol)
-                                .font(.title3)
-                            Text(shortScenario(scenario))
-                                .font(.caption.weight(.semibold))
-                        }
-                        .foregroundStyle(model.scenario == scenario ? AdaptiveDesign.ink : .white)
-                        .frame(maxWidth: .infinity, minHeight: 72)
-                    }
-                    .buttonStyle(.plain)
-                    .modifier(ScenarioGlassModifier(isSelected: model.scenario == scenario))
-                }
-            }
-        }
-    }
-
-    private var profileStep: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            if let recommendation = model.recommendation {
-                HStack {
-                    Label(shortScenario(recommendation.context), systemImage: recommendation.context.symbol)
-                        .font(.title2.weight(.semibold))
-                        .foregroundStyle(AdaptiveDesign.accent)
-                    Spacer()
-                    GlassTag(text: "추천 설정")
-                }
-
-                GlassSurface(tint: AdaptiveDesign.cobalt.opacity(0.1)) {
-                    profileValues(recommendation.profile)
-                }
-
-                GlassSurface(padding: 16) {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Label(
-                                recommendation.generatedBy == "agents_sdk" ? "AGENT" : "RULES",
-                                systemImage: "waveform.path.ecg"
-                            )
-                            .font(.caption.monospaced().weight(.bold))
-                            .foregroundStyle(AdaptiveDesign.accent)
-                            Spacer()
-                            Text("\(recommendation.observedSampleCount) SIGNALS")
-                                .font(.caption2.monospaced())
+    private var liveSignalCard: some View {
+        GlassSurface(tint: AdaptiveDesign.cobalt.opacity(0.1)) {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("HEART RATE")
+                            .font(.caption2.weight(.bold))
+                            .tracking(1.8)
+                            .foregroundStyle(.white.opacity(0.46))
+                        HStack(alignment: .lastTextBaseline, spacing: 6) {
+                            Text(model.snapshot?.heartRateBPM.map(String.init) ?? "—")
+                                .font(.system(size: 54, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                                .contentTransition(.numericText())
+                            Text("BPM")
+                                .font(.caption.weight(.bold))
                                 .foregroundStyle(.white.opacity(0.48))
                         }
-                        Text(recommendation.reason)
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.76))
-                            .lineLimit(2)
                     }
+                    Spacer()
+                    Image(systemName: model.isStreaming ? "dot.radiowaves.left.and.right" : "heart.fill")
+                        .font(.title2)
+                        .foregroundStyle(AdaptiveDesign.accent)
+                        .symbolEffect(.variableColor.iterative, isActive: model.isStreaming)
                 }
 
-                actionButton("확인", icon: "checkmark") {
-                    model.approveProfile()
+                signalTrace
+
+                HStack(spacing: 0) {
+                    compactMetric("수면 점수", model.snapshot?.sleepScore)
+                    compactMetric("걸음", model.snapshot?.activitySteps)
+                    compactMetric("HRV", model.snapshot?.hrvMS)
                 }
-                .accessibilityIdentifier("approveProfile")
             }
         }
     }
 
-    private var homeStep: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            sectionLabel("집")
+    private var signalTrace: some View {
+        GeometryReader { proxy in
+            let values = model.recentSnapshots.compactMap(\.heartRateBPM)
+            Path { path in
+                guard let minimum = values.min(), let maximum = values.max(), !values.isEmpty else { return }
+                let span = max(1, maximum - minimum)
+                for (index, value) in values.enumerated() {
+                    let x = values.count == 1 ? 0 : proxy.size.width * CGFloat(index) / CGFloat(values.count - 1)
+                    let ratio = CGFloat(value - minimum) / CGFloat(span)
+                    let y = proxy.size.height - ratio * (proxy.size.height - 8) - 4
+                    if index == 0 { path.move(to: CGPoint(x: x, y: y)) }
+                    else { path.addLine(to: CGPoint(x: x, y: y)) }
+                }
+            }
+            .stroke(
+                LinearGradient(colors: [AdaptiveDesign.accent.opacity(0.25), AdaptiveDesign.accent], startPoint: .leading, endPoint: .trailing),
+                style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
+            )
+            .animation(.smooth, value: model.lastSignalSequence)
+        }
+        .frame(height: 70)
+        .accessibilityHidden(true)
+    }
+
+    private var consentStrip: some View {
+        GlassSurface(padding: 12) {
+            HStack(spacing: 4) {
+                ForEach(ConsentedMetric.allCases) { metric in
+                    Button { model.toggleConsent(metric) } label: {
+                        VStack(spacing: 6) {
+                            Image(systemName: model.consent.contains(metric) ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(model.consent.contains(metric) ? AdaptiveDesign.accent : .white.opacity(0.25))
+                            Text(metric.title)
+                                .font(.caption2.weight(.medium))
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("consent_\(metric.rawValue)")
+                }
+            }
+        }
+    }
+
+    private var spacesHub: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                hubHeader(title: "SPACES", symbol: "square.grid.2x2.fill", badge: nil)
+                spacePicker
+                if let error = model.errorMessage { errorBanner(error) }
+
+                switch selectedSpace {
+                case .home: homeSpace
+                case .hotel: hotelSpace
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 32)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    private var spacePicker: some View {
+        glassGroup(spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(Space.allCases, id: \.self) { space in
+                    Button {
+                        selectedSpace = space
+                    } label: {
+                        Label(space.title, systemImage: space.symbol)
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .foregroundStyle(selectedSpace == space ? AdaptiveDesign.ink : .white)
+                    }
+                    .buttonStyle(.plain)
+                    .modifier(ScenarioGlassModifier(isSelected: selectedSpace == space))
+                }
+            }
+        }
+    }
+
+    private var homeSpace: some View {
+        VStack(alignment: .leading, spacing: 20) {
             roomPreview(title: "Home", room: model.homeRoom)
 
-            if !model.homeRoom.isApplied {
-                actionButton("적용", icon: "play.fill") {
-                    model.applyHome()
+            if model.recommendation == nil {
+                actionButton("Live에서 환경 판단", icon: "waveform.path.ecg") {
+                    selectedHub = .live
                 }
-                .accessibilityIdentifier("applyHome")
+            } else if !model.homeRoom.isApplied {
+                actionButton("적용", icon: "play.fill") { model.applyHome() }
+                    .accessibilityIdentifier("applyHome")
             } else {
                 GlassSurface {
                     VStack(spacing: 20) {
-                        if model.scenario == .recovery {
-                            brightnessControl
-                        }
+                        if model.scenario == .recovery { brightnessControl }
                         quickRoomActions(isHotel: false)
                     }
                 }
 
-                if model.scenario != .recovery || model.hasSavedAdjustment {
-                    actionButton("호텔 체크인", icon: "qrcode.viewfinder") {
+                if model.scenario == .recovery && !model.hasSavedAdjustment {
+                    actionButton("저장", icon: "checkmark") { await model.saveAdjustment() }
+                        .accessibilityIdentifier("saveAdjustment")
+                } else {
+                    actionButton("호텔로 가져가기", icon: "arrow.up.right") {
+                        await model.checkIn()
+                        selectedSpace = .hotel
+                    }
+                    .accessibilityIdentifier("checkInHotel")
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var hotelSpace: some View {
+        switch model.step {
+        case .consensus:
+            if let consensus = model.companionConsensus {
+                CompanionConsensusView(
+                    preferences: model.companionPreferences,
+                    consensus: consensus,
+                    isLoading: model.isLoading,
+                    approve: { await model.approveCompanionConsensus() },
+                    choose: { await model.chooseCompanionPreference($0) }
+                )
+            }
+        case .hotel:
+            hotelControls
+        case .complete:
+            completeState
+        default:
+            VStack(alignment: .leading, spacing: 20) {
+                roomPreview(title: "Hotel", room: model.hotelRoom)
+                if model.recommendation == nil {
+                    actionButton("Live에서 환경 판단", icon: "waveform.path.ecg") { selectedHub = .live }
+                } else {
+                    actionButton("체크인", icon: "qrcode.viewfinder") {
                         await model.checkIn()
                     }
                     .accessibilityIdentifier("checkInHotel")
-                } else {
-                    actionButton("저장", icon: "checkmark") {
-                        await model.saveAdjustment()
-                    }
-                    .accessibilityIdentifier("saveAdjustment")
                 }
             }
+        }
+    }
+
+    private var hotelControls: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            GlassSurface(tint: AdaptiveDesign.accent.opacity(0.07)) {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Label("0 BIOMETRICS", systemImage: "lock.shield.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(AdaptiveDesign.accent)
+                        Spacer()
+                        GlassTag(text: "PRIVATE")
+                    }
+                    if let execution = model.session?.execution {
+                        HStack(spacing: 12) {
+                            valueBlock("밝기", "\(execution.lighting.brightnessPercent)%")
+                            valueBlock("온도", "\(execution.temperatureC.formatted())°")
+                        }
+                    }
+                }
+            }
+            roomPreview(title: "Hotel", room: model.hotelRoom)
+            quickRoomActions(isHotel: true)
+
+            if model.hotelRoom.isApplied {
+                actionButton("체크아웃", icon: "door.left.hand.open") { await model.checkout() }
+                    .accessibilityIdentifier("checkout")
+            } else {
+                actionButton("적용", icon: "checkmark") { await model.applyHotel() }
+                    .accessibilityIdentifier("applyHotel")
+            }
+        }
+    }
+
+    private var completeState: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            roomPreview(title: "Hotel", room: model.hotelRoom)
+            HStack(spacing: 8) {
+                GlassTag(text: "공간 복원")
+                GlassTag(text: "일회성 권한 만료")
+            }
+            actionButton("새 세션", icon: "arrow.counterclockwise") {
+                model.resetDemo()
+                selectedSpace = .home
+                selectedHub = .live
+            }
+            .accessibilityIdentifier("resetDemo")
         }
     }
 
     private var brightnessControl: some View {
         VStack(spacing: 16) {
             HStack(alignment: .lastTextBaseline) {
-                Text("밝기")
-                    .font(.headline)
+                Text("밝기").font(.headline)
                 Spacer()
                 Text("\(Int(model.editedBrightness))%")
                     .font(.system(size: 38, weight: .semibold, design: .rounded))
@@ -240,118 +365,63 @@ struct FlowView: View {
         }
     }
 
-    private var hotelStep: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            sectionLabel("호텔")
-
-            GlassSurface(tint: AdaptiveDesign.accent.opacity(0.07)) {
-                VStack(alignment: .leading, spacing: 20) {
-                    Label("공유된 생체정보: \(model.session?.sharedBiometricCount ?? 0)건", systemImage: "lock.shield.fill")
-                        .font(.headline)
-                        .foregroundStyle(AdaptiveDesign.accent)
-
-                    if let execution = model.session?.execution {
-                        HStack(spacing: 12) {
-                            valueBlock("밝기", "\(execution.lighting.brightnessPercent)%")
-                            valueBlock("온도", "\(execution.temperatureC.formatted())°")
+    private var hubDock: some View {
+        glassGroup(spacing: 12) {
+            HStack(spacing: 8) {
+                ForEach(Hub.allCases, id: \.self) { hub in
+                    Button {
+                        selectedHub = hub
+                    } label: {
+                        VStack(spacing: 4) {
+                            Image(systemName: hub.symbol)
+                                .font(.system(size: 17, weight: .semibold))
+                            Text(hub.title)
+                                .font(.caption2.weight(.semibold))
                         }
+                        .foregroundStyle(selectedHub == hub ? AdaptiveDesign.ink : .white.opacity(0.62))
+                        .frame(maxWidth: .infinity, minHeight: 52)
                     }
-
-                    glassGroup(spacing: 8) {
-                        HStack(spacing: 8) {
-                            GlassTag(text: "색온도 미지원")
-                            GlassTag(text: "사운드 미지원")
-                        }
-                    }
+                    .buttonStyle(.plain)
+                    .modifier(DockGlassModifier(isSelected: selectedHub == hub))
+                    .accessibilityIdentifier(hub == .agent ? "openAgentChat" : "hub_\(hub.rawValue)")
                 }
             }
-
-            roomPreview(title: "Hotel", room: model.hotelRoom)
-            quickRoomActions(isHotel: true)
-
-            if model.hotelRoom.isApplied {
-                actionButton("체크아웃", icon: "door.left.hand.open") {
-                    await model.checkout()
-                }
-                .accessibilityIdentifier("checkout")
-            } else {
-                actionButton("적용", icon: "checkmark") {
-                    await model.applyHotel()
-                }
-                .accessibilityIdentifier("applyHotel")
-            }
+            .padding(8)
         }
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 
-    private var completeStep: some View {
-        VStack(alignment: .leading, spacing: 32) {
-            Spacer(minLength: 36)
-            ZStack {
-                Circle()
-                    .fill(AdaptiveDesign.accent.opacity(0.16))
-                    .frame(width: 112, height: 112)
-                    .blur(radius: 12)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 48, weight: .medium))
-                    .foregroundStyle(AdaptiveDesign.accent)
-                    .symbolEffect(.bounce, value: model.step)
-            }
-            Text("완료")
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
-
-            glassGroup(spacing: 8) {
-                HStack(spacing: 8) {
-                    GlassTag(text: "공간 복원")
-                    GlassTag(text: "일회성 권한 만료")
-                }
-            }
-
-            actionButton("다시 시작", icon: "arrow.counterclockwise") {
-                model.resetDemo()
-            }
-            .accessibilityIdentifier("resetDemo")
+    private func hubHeader(title: String, symbol: String, badge: String?) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(AdaptiveDesign.accent)
+            Text(title)
+                .font(.caption.weight(.bold))
+                .tracking(2.4)
+            Spacer()
+            if let badge { GlassTag(text: badge) }
         }
+        .frame(height: 44)
     }
 
-    private func sectionLabel(_ title: String) -> some View {
-        Text(title)
-            .font(.title2.weight(.semibold))
+    private var liveBadge: String {
+        model.isStreaming ? "LIVE · \(model.lastSignalSequence)" : "OFFLINE"
+    }
+
+    private func compactMetric(_ label: String, _ value: Int?) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(value.map(String.init) ?? "—")
+                .font(.title3.weight(.semibold))
+                .monospacedDigit()
+                .contentTransition(.numericText())
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.46))
+        }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func consentButton(_ metric: ConsentedMetric) -> some View {
-        Button { model.toggleConsent(metric) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: model.consent.contains(metric) ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(model.consent.contains(metric) ? AdaptiveDesign.accent : .white.opacity(0.25))
-                Text(metric.title)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.white)
-                Spacer(minLength: 0)
-            }
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("consent_\(metric.rawValue)")
-    }
-
-    private func metricGrid(_ snapshot: WearableSnapshot) -> some View {
-        LazyVGrid(columns: twoColumns, spacing: 12) {
-            GlassMetricTile(label: "수면", value: snapshot.sleepScore.map(String.init) ?? "—")
-            GlassMetricTile(label: "걸음", value: snapshot.activitySteps.map(String.init) ?? "—")
-            GlassMetricTile(label: "심박", value: snapshot.heartRateBPM.map(String.init) ?? "—")
-            GlassMetricTile(label: "HRV", value: snapshot.hrvMS.map(String.init) ?? "—")
-        }
-    }
-
-    private func profileValues(_ profile: EnvironmentProfile) -> some View {
-        LazyVGrid(columns: twoColumns, spacing: 12) {
-            GlassMetricTile(label: "밝기", value: "\(profile.lighting.brightnessPercent)%")
-            GlassMetricTile(label: "온도", value: "\(profile.temperatureC.formatted())°")
-            GlassMetricTile(label: "색온도", value: "\(profile.lighting.colorTemperatureK)K")
-            GlassMetricTile(label: "사운드", value: profile.soundPreset.capitalized)
-        }
     }
 
     private func roomPreview(title: String, room: RoomState) -> some View {
@@ -365,16 +435,22 @@ struct FlowView: View {
                     endPoint: .bottomTrailing
                 )
             )
-            .frame(height: 218)
+            .frame(height: 230)
             .overlay(alignment: .topLeading) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(title.uppercased())
-                        .font(.caption.weight(.bold))
-                        .tracking(2)
-                        .foregroundStyle(.white.opacity(0.55))
+                    HStack {
+                        Text(title.uppercased())
+                            .font(.caption.weight(.bold))
+                            .tracking(2)
+                            .foregroundStyle(.white.opacity(0.55))
+                        Spacer()
+                        Circle()
+                            .fill(room.isApplied ? AdaptiveDesign.accent : .white.opacity(0.2))
+                            .frame(width: 8, height: 8)
+                    }
                     Spacer()
-                    Image(systemName: "bed.double.fill")
-                        .font(.system(size: 32))
+                    Image(systemName: title == "Hotel" ? "building.2.fill" : "house.fill")
+                        .font(.system(size: 30))
                     Text("\(room.brightness)%  ·  \(room.temperature.formatted())°")
                         .font(.title2.weight(.semibold))
                         .monospacedDigit()
@@ -450,18 +526,6 @@ struct FlowView: View {
         }
     }
 
-    private var twoColumns: [GridItem] {
-        [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
-    }
-
-    private func shortScenario(_ scenario: DemoScenario) -> String {
-        switch scenario {
-        case .recovery: "회복"
-        case .focus: "집중"
-        case .calm: "휴식"
-        }
-    }
-
     private func roomColor(brightness: Int) -> Color {
         AdaptiveDesign.warm.opacity(0.28 + Double(brightness) / 190)
     }
@@ -479,6 +543,22 @@ private struct ScenarioGlassModifier: ViewModifier {
             )
         } else {
             content.background(isSelected ? AdaptiveDesign.accent : .white.opacity(0.08), in: RoundedRectangle(cornerRadius: 22))
+        }
+    }
+}
+
+private struct DockGlassModifier: ViewModifier {
+    let isSelected: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.glassEffect(
+                .regular.tint(isSelected ? AdaptiveDesign.accent : .clear).interactive(),
+                in: .rect(cornerRadius: 20)
+            )
+        } else {
+            content.background(isSelected ? AdaptiveDesign.accent : .clear, in: RoundedRectangle(cornerRadius: 20))
         }
     }
 }
